@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import sunrisePreview from './assets/SunrisePreview.mov'
+import gremlinPreview from './assets/gremlinpreview.mov'
+import GremlinGrove from './components/GremlinGrove'
 
 function MailIcon() {
   return (
@@ -39,10 +41,28 @@ function DownloadIcon({ size = 22 }: { size?: number }) {
   )
 }
 
-function ChevronIcon({ direction, size = 20 }: { direction: 'left' | 'right'; size?: number }) {
+function PlayIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="6,4 20,12 6,20" />
+    </svg>
+  )
+}
+
+function XIcon({ size = 18 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points={direction === 'left' ? '15,6 9,12 15,18' : '9,6 15,12 9,18'} />
+      <line x1="5" y1="5" x2="19" y2="19" />
+      <line x1="19" y1="5" x2="5" y2="19" />
+    </svg>
+  )
+}
+
+function ChevronIcon({ direction, size = 20 }: { direction: 'left' | 'right' | 'down'; size?: number }) {
+  const points = direction === 'left' ? '15,6 9,12 15,18' : direction === 'right' ? '9,6 15,12 9,18' : '6,9 12,15 18,9'
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points={points} />
     </svg>
   )
 }
@@ -94,6 +114,13 @@ const projects = [
     video: sunrisePreview,
   },
   {
+    name: 'Gremlin Grove',
+    desc: 'A dungeon crawler originally built in Java, ported to p5.js. Dodge gremlins, break bricks, and find the exit.',
+    stack: ['p5.js', 'TypeScript', 'Java (original)'],
+    playable: true,
+    video: gremlinPreview,
+  },
+  {
     name: 'KirchhoffNet Toolbox',
     desc: 'A foundational platform for the research of KirchhoffNet neural networks, built around a physics-based device model. ',
     stack: ['Python', 'PyTorch', 'SciPy', 'NumPy', 'Matplotlib'],
@@ -101,7 +128,7 @@ const projects = [
   },
   {
     name: 'DOLMA',
-    desc: 'an AI powered personal assistant with natural language calendar management, schedule optimisation and conflict resolution',
+    desc: 'An AI powered personal assistant with natural language calendar management, schedule optimisation and conflict resolution',
     stack: ['Python', 'React', 'OpenAI API', 'REST APIs'],
     repo: 'https://github.com/fildeee/ELEC5620_DOLMA',
   },
@@ -117,6 +144,7 @@ function App() {
   const [resumeEverClicked, setResumeEverClicked] = useState(false)
   const [trackIndex, setTrackIndex] = useState(1)
   const [trackTransition, setTrackTransition] = useState(true)
+  const [showGame, setShowGame] = useState(false)
   const cursorRef = useRef<HTMLDivElement>(null)
 
   const extendedProjects = [projects[projects.length - 1], ...projects, projects[0]]
@@ -147,6 +175,19 @@ function App() {
     const timer = setTimeout(() => setCopied(false), 1600)
     return () => clearTimeout(timer)
   }, [copied])
+
+  useEffect(() => {
+    if (!showGame) return
+    document.body.style.overflow = 'hidden'
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowGame(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      document.body.style.overflow = ''
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [showGame])
 
   useEffect(() => {
     const dot = cursorRef.current
@@ -224,20 +265,25 @@ function App() {
       <div className="cursor-dot" ref={cursorRef} />
 
       <nav>
-        <span className="nav-logo">Masroor Muntasir</span>
-        <div className="nav-links">
-          {navItems.map((id) => (
-            <a key={id} href={`#${id}`} className={active === id ? 'active' : ''}>
-              {id}
-            </a>
-          ))}
+        <div className="nav-inner">
+          <span className="nav-logo">Masroor Muntasir</span>
+          <div className="nav-links">
+            {navItems.map((id) => (
+              <a key={id} href={`#${id}`} className={active === id ? 'active' : ''}>
+                {id}
+              </a>
+            ))}
+          </div>
         </div>
       </nav>
 
+      <div className="container">
       <div className="hero">
         <h1>Hi, I'm <span>Masroor</span>.<br />I build stuff.</h1>
         <p>I'm a software engineer who loves tinkering with things, and most days I'm somewhere between a React component and a Python script trying to make something work.</p>
-        <div className="scroll-cue">scroll</div>
+        <div className="scroll-cue" aria-hidden="true">
+          <ChevronIcon direction="down" size={26} />
+        </div>
       </div>
 
       <section id="about">
@@ -319,7 +365,7 @@ function App() {
                           <span key={tech}>{tech}</span>
                         ))}
                       </div>
-                      {(project.site || project.repo) && (
+                      {(project.site || project.repo || project.playable) && (
                         <div className="project-links">
                           {project.site && (
                             <a className="project-link" href={project.site} target="_blank" rel="noreferrer" aria-label={`${project.name} website`}>
@@ -330,6 +376,11 @@ function App() {
                             <a className="project-link" href={project.repo} target="_blank" rel="noreferrer" aria-label={`${project.name} on GitHub`}>
                               <GithubIcon size={16} />
                             </a>
+                          )}
+                          {project.playable && (
+                            <button type="button" className="project-link" onClick={() => setShowGame(true)} aria-label={`Play ${project.name}`}>
+                              <PlayIcon size={16} />
+                            </button>
                           )}
                         </div>
                       )}
@@ -377,9 +428,24 @@ function App() {
         </div>
       </section>
 
+      </div>
+
       <footer>
-        <p>designed & built by masroor — 2026</p>
+        <div className="footer-inner">
+          <p>designed & built by masroor | 2026</p>
+        </div>
       </footer>
+
+      {showGame && (
+        <div className="game-modal-overlay" onClick={() => setShowGame(false)}>
+          <div className="game-modal" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="game-modal-close" onClick={() => setShowGame(false)} aria-label="Close game">
+              <XIcon />
+            </button>
+            <GremlinGrove />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
