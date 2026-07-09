@@ -6,14 +6,14 @@ import GremlinGrove from './components/GremlinGrove'
 
 function MailIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
       <polyline points="22,6 12,13 2,6" />
     </svg>
   )
 }
 
-function GithubIcon({ size = 22 }: { size?: number }) {
+function GithubIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
@@ -69,7 +69,7 @@ function ChevronIcon({ direction, size = 20 }: { direction: 'left' | 'right' | '
 
 function LinkedinIcon() {
   return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" />
       <rect x="2" y="9" width="4" height="12" />
       <circle cx="4" cy="4" r="2" />
@@ -144,14 +144,28 @@ function App() {
   const [resumeEverClicked, setResumeEverClicked] = useState(false)
   const [trackIndex, setTrackIndex] = useState(1)
   const [trackTransition, setTrackTransition] = useState(true)
+  const [isSliding, setIsSliding] = useState(false)
   const [showGame, setShowGame] = useState(false)
   const cursorRef = useRef<HTMLDivElement>(null)
+  const slideLockRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const extendedProjects = [projects[projects.length - 1], ...projects, projects[0]]
   const activeProjectIndex = ((trackIndex - 1) % projects.length + projects.length) % projects.length
 
-  const prevProject = () => setTrackIndex((i) => i - 1)
-  const nextProject = () => setTrackIndex((i) => i + 1)
+  const goToSlide = (updater: (i: number) => number) => {
+    if (isSliding) return
+    setIsSliding(true)
+    setTrackIndex(updater)
+    // Safety net in case transitionend never fires (e.g. no-op transitions).
+    slideLockRef.current = setTimeout(() => setIsSliding(false), 550)
+  }
+
+  const prevProject = () => goToSlide((i) => i - 1)
+  const nextProject = () => goToSlide((i) => i + 1)
+
+  useEffect(() => () => {
+    if (slideLockRef.current) clearTimeout(slideLockRef.current)
+  }, [])
 
   const handleTrackTransitionEnd = (e: React.TransitionEvent<HTMLDivElement>) => {
     if (e.target !== e.currentTarget) return
@@ -162,6 +176,8 @@ function App() {
       setTrackTransition(false)
       setTrackIndex(projects.length)
     }
+    if (slideLockRef.current) clearTimeout(slideLockRef.current)
+    setIsSliding(false)
   }
 
   useEffect(() => {
@@ -279,8 +295,10 @@ function App() {
 
       <div className="container">
       <div className="hero">
-        <h1>Hi, I'm <span>Masroor</span>.<br />I build stuff.</h1>
-        <p>I'm a software engineer who loves tinkering with things, and most days I'm somewhere between a React component and a Python script trying to make something work.</p>
+        <div className="hero-content">
+          <h1>Hi, I'm <span>Masroor</span>.<br />I build stuff.</h1>
+          <p>I'm a software engineer who loves tinkering with things, and most days I'm somewhere between a React component and a Python script trying to make something work.</p>
+        </div>
         <div className="scroll-cue" aria-hidden="true">
           <ChevronIcon direction="down" size={26} />
         </div>
@@ -401,7 +419,7 @@ function App() {
                 type="button"
                 key={project.name}
                 className={`carousel-dot${i === activeProjectIndex ? ' active' : ''}`}
-                onClick={() => setTrackIndex(i + 1)}
+                onClick={() => goToSlide(() => i + 1)}
                 aria-label={`Go to ${project.name}`}
               />
             ))}
